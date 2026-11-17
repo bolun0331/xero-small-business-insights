@@ -1,0 +1,152 @@
+// =====================================================================
+// XSBI Power BI measures
+// Create these in a dedicated measures table (see BUILD_GUIDE.md, step 6).
+// Each measure: New measure -> paste everything from the measure name down.
+//
+// Important: XSBI values are growth rates (%), days, and % of firms, NOT
+// amounts. They must never be summed. Every measure averages, and returns
+// blank unless exactly one metric is in context, so a visual can't silently
+// mix days with percentages.
+// =====================================================================
+
+
+// ---------- Folder: Core ----------
+
+Value =
+IF (
+    HASONEVALUE ( DimMetric[MetricName] ),
+    AVERAGE ( FactMetric[Value] )
+)
+
+// Rolling 3-month average ending at the latest month in the current filter.
+// Use this on line charts: regional and industry series are noisy month to month.
+Value 3M Avg =
+VAR _end = MAX ( DimDate[Date] )
+VAR _start = EDATE ( _end, -2 )
+RETURN
+    IF (
+        HASONEVALUE ( DimMetric[MetricName] ) && NOT ISBLANK ( [Value] ),
+        CALCULATE (
+            AVERAGE ( FactMetric[Value] ),
+            REMOVEFILTERS ( DimDate ),
+            DimDate[Date] >= _start,
+            DimDate[Date] <= _end
+        )
+    )
+
+
+// ---------- Folder: Latest vs 2019 ----------
+// These ignore the date slicer on purpose: they always compare the latest
+// 3 months in the data with the 2019 (pre-COVID) average.
+
+Latest DateKey =
+CALCULATE ( MAX ( FactMetric[DateKey] ), REMOVEFILTERS ( DimDate ) )
+
+Latest Month =
+VAR _k = [Latest DateKey]
+RETURN
+    FORMAT ( DATE ( QUOTIENT ( _k, 10000 ), MOD ( QUOTIENT ( _k, 100 ), 100 ), 1 ), "mmm yyyy" )
+
+Latest 3M Avg =
+VAR _k = [Latest DateKey]
+VAR _end = DATE ( QUOTIENT ( _k, 10000 ), MOD ( QUOTIENT ( _k, 100 ), 100 ), 1 )
+VAR _start = EDATE ( _end, -2 )
+RETURN
+    IF (
+        HASONEVALUE ( DimMetric[MetricName] ),
+        CALCULATE (
+            AVERAGE ( FactMetric[Value] ),
+            REMOVEFILTERS ( DimDate ),
+            DimDate[Date] >= _start,
+            DimDate[Date] <= _end
+        )
+    )
+
+Avg 2019 =
+IF (
+    HASONEVALUE ( DimMetric[MetricName] ),
+    CALCULATE (
+        AVERAGE ( FactMetric[Value] ),
+        REMOVEFILTERS ( DimDate ),
+        DimDate[Year] = 2019
+    )
+)
+
+// In the metric's own units: percentage points for growth and % of firms, days for payment metrics
+Change vs 2019 =
+VAR _latest = [Latest 3M Avg]
+VAR _base = [Avg 2019]
+RETURN
+    IF ( NOT ISBLANK ( _latest ) && NOT ISBLANK ( _base ), _latest - _base )
+
+// Same change, signed so that positive always means "better"
+// (late payments falling is good, so its sign is flipped)
+Change vs 2019 (Better +) =
+VAR _chg = [Change vs 2019]
+VAR _higherIsBetter = SELECTEDVALUE ( DimMetric[HigherIsBetter] )
+RETURN
+    IF ( NOT ISBLANK ( _chg ), IF ( _higherIsBetter, _chg, -_chg ) )
+
+
+// ---------- Folder: Cash flow ----------
+
+// Smallest change treated as meaningful (1 percentage point or 1 day).
+// Below this, a move is within normal noise for regional/industry series.
+Material Change = 1
+
+Sales Change vs 2019 =
+CALCULATE ( [Change vs 2019], REMOVEFILTERS ( DimMetric ), DimMetric[MetricCode] = "sales" )
+
+Late Days Change vs 2019 =
+CALCULATE ( [Change vs 2019], REMOVEFILTERS ( DimMetric ), DimMetric[MetricCode] = "late_payments" )
+
+// Stress = sales growth materially below 2019 AND customers paying materially later than 2019.
+// Watch  = one of the two.
+Cash Flow Status =
+VAR _sales = [Sales Change vs 2019]
+VAR _late = [Late Days Change vs 2019]
+VAR _t = [Material Change]
+RETURN
+    SWITCH (
+        TRUE (),
+        ISBLANK ( _sales ) || ISBLANK ( _late ), BLANK (),
+        _sales < -_t && _late > _t, "Stress",
+        _sales < -_t || _late > _t, "Watch",
+        "OK"
+    )
+
+Cash Flow Status Sort =
+SWITCH ( [Cash Flow Status], "Stress", 1, "Watch", 2, "OK", 3 )
+
+
+// ---------- Folder: Jobs ----------
+
+// Share of firms adding staff minus share cutting staff (percentage points)
+Net Job Creators =
+VAR _c = CALCULATE ( AVERAGE ( FactMetric[Value] ), REMOVEFILTERS ( DimMetric ), DimMetric[MetricCode] = "job_creators" )
+VAR _d = CALCULATE ( AVERAGE ( FactMetric[Value] ), REMOVEFILTERS ( DimMetric ), DimMetric[MetricCode] = "job_downsizers" )
+RETURN
+    IF ( NOT ISBLANK ( _c ) && NOT ISBLANK ( _d ), _c - _d )
+
+
+// ---------- Folder: Formatting ----------
+// Use with Conditional formatting -> Format style: Field value
+
+Colour Change vs 2019 =
+VAR _s = [Change vs 2019 (Better +)]
+VAR _t = [Material Change]
+RETURN
+    SWITCH (
+        TRUE (),
+        ISBLANK ( _s ), BLANK (),
+        _s > _t, "#1B7F5B",      // better: green
+        _s < -_t, "#B3261E",     // worse: red
+        "#6B7280"                // within noise: grey
+    )
+
+Colour Cash Flow Status =
+SWITCH ( [Cash Flow Status], "Stress", "#B3261E", "Watch", "#C77700", "OK", "#1B7F5B" )
+
+Source Note =
+"Source: Xero Small Business Insights (CC BY 4.0), data to " & [Latest Month]
+
