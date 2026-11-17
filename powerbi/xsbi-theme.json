@@ -1,0 +1,29 @@
+{
+  "name": "XSBI Small Business Health",
+  "dataColors": [
+    "#13B5EA",
+    "#1F3A5F",
+    "#7A8B99",
+    "#E3A008",
+    "#6D28D9",
+    "#0F766E",
+    "#BE185D",
+    "#9CA3AF"
+  ],
+  "good": "#1B7F5B",
+  "neutral": "#6B7280",
+  "bad": "#B3261E",
+  "maximum": "#1B7F5B",
+  "center": "#F3F4F6",
+  "minimum": "#B3261E",
+  "background": "#FFFFFF",
+  "foreground": "#1F2937",
+  "tableAccent": "#13B5EA",
+  "textClasses": {
+    "title": { "fontFace": "Segoe UI Semibold", "fontSize": 14, "color": "#1F2937" },
+    "header": { "fontFace": "Segoe UI Semibold", "fontSize": 12, "color": "#1F2937" },
+    "label": { "fontFace": "Segoe UI", "fontSize": 10, "color": "#4B5563" },
+    "callout": { "fontFace": "Segoe UI Semibold", "fontSize": 28, "color": "#1F2937" }
+  }
+}
+
