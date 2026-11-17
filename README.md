@@ -11,7 +11,7 @@ A Python pipeline that turns Xero Small Business Insights (XSBI) spreadsheets in
 1. **Sales have recovered; pay and hiring haven't.** NZ small-business sales growth (5.6% y/y) is back at its 2019 pace, but wage growth has slowed to 1.3% (3.8% in 2019, 6.7% in mid-2022) and the net share of firms adding staff is 3.6 points, against 9.3 in 2019.
 2. **From last to first internationally.** NZ had the weakest sales growth of Xero's five markets for 14 months (Jun 2024 - Jul 2025, low of -4.5% in Aug 2024). It now leads (5.6%) and has the shortest late payments (5.2 days vs 6.9-10.5 elsewhere). Jobs growth (2.5%) still trails Australia (3.9%).
 3. **Wage growth is below its 2019 pace in all 12 regions.** Canterbury is recovering fastest (sales +4.4 and jobs +3.5 points vs 2019).
-4. **Hawke's Bay is the only segment under cash-flow stress:** sales growth 3.8 points below 2019 and late payments 2.1 days longer, both beyond the �1 materiality threshold. Health care is the only industry paid later than in 2019 (+4.6 days).
+4. **Hawke's Bay is the only segment under cash-flow stress:** sales growth 3.8 points below 2019 and late payments 2.1 days longer, both beyond the +/-1 materiality threshold. Health care is the only industry paid later than in 2019 (+4.6 days).
 5. **Construction has turned around** (sales growth -6.6% in Q4 2024 to +11.8% in Q2 2026). **Accommodation and food services** is the only industry where more small businesses cut payroll than added to it (net -1.5 points).
 
 **Limits:** XSBI covers Xero's small-business subscribers, not the whole economy. Industry and region are self-reported and samples are smaller than the national series. Averages across segments are unweighted. Findings are leads for further work (e.g. checking against Stats NZ filled-jobs data), not causal conclusions.
@@ -36,7 +36,7 @@ Built in Power BI Desktop on the star schema below. The `.pbix`, DAX measures an
 ## How it works
 
 ```
-XSBI .xlsx files �� extract.py �� validate.py �� model.py �� load.py �� CSV + SQL Server �� Power BI
+XSBI .xlsx files -> extract.py -> validate.py -> model.py -> load.py -> CSV + SQL Server -> Power BI
   (wide, 1 sheet       (find header,    (types, grain,    (star        (full refresh
    per metric)          reshape long)    ranges, gaps)     schema)      in one transaction)
 ```
